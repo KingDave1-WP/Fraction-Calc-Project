@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Axiom — Adding Fractions with Different Denominators</title>
+  
+  <!-- Google Fonts: Inter for crisp UI & JetBrains Mono for aligned mathematical notation -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            paper: '#FAF9F6',
+            ink: '#1E293B',
+            cobalt: '#2563EB',
+            emerald: '#059669',
+            amber: '#D97706',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Editorial Notebook Aesthetic & Custom Utilities */
+    body {
+      background-color: #FAF9F6;
+      color: #1E293B;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: none;
+    }
+
+    /* Subtle notebook grid background for working area */
+    .notebook-grid {
+      background-image: 
+        linear-gradient(to right, rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+
+    /* True Stacked Fraction Styling */
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      vertical-align: middle;
+      line-height: 1.05;
+      margin: 0 0.18em;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .frac-num {
+      padding: 0 0.22em 0.1em;
+      border-bottom: 2px solid currentColor;
+      text-align: center;
+    }
+    .frac-den {
+      padding: 0.1em 0.22em 0;
+      text-align: center;
+    }
+
+    /* Highlight pills for worked example callouts */
+    .callout-target {
+      background-color: rgba(37, 99, 235, 0.14);
+      color: #1D4ED8;
+      border-radius: 6px;
+      padding: 0 4px;
+      box-shadow: 0 0 0 1.5px rgba(37, 99, 235, 0.45);
+      transition: all 0.25s ease;
+    }
+    .callout-multiplier {
+      font-size: 0.72em;
+      font-weight: 700;
+      color: #D97706;
+      background: #FEF3C7;
+      border: 1px solid #F59E0B;
+      border-radius: 4px;
+      padding: 0 4px;
+      margin-left: 3px;
+      vertical-align: super;
+    }
+
+    /* Tutor Geometric Orb Animation */
+    @keyframes pulseRing {
+      0% { transform: scale(0.92); opacity: 0.75; }
+      50% { transform: scale(1.08); opacity: 0.3; }
+      100% { transform: scale(0.92); opacity: 0.75; }
+    }
+    @keyframes speakingWave {
+      0%, 100% { transform: scaleY(0.4); }
+      50% { transform: scaleY(1); }
+    }
+    .tutor-ring {
+      animation: pulseRing 3.2s infinite ease-in-out;
+      transform-origin: center;
+    }
+    .tutor-speaking .tutor-ring {
+      animation: pulseRing 0.9s infinite ease-in-out;
+    }
+    .wave-bar {
+      transform-origin: center;
+      transition: transform 0.2s ease;
+    }
+    .tutor-speaking .wave-bar-1 { animation: speakingWave 0.55s infinite ease-in-out; }
+    .tutor-speaking .wave-bar-2 { animation: speakingWave 0.55s infinite ease-in-out 0.15s; }
+    .tutor-speaking .wave-bar-3 { animation: speakingWave 0.55s infinite ease-in-out 0.3s; }
+
+    /* Line reveal animation */
+    @keyframes slideFadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-line {
+      animation: slideFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Tactile Keypad Button Press */
+    .keypad-btn {
+      user-select: none;
+      touch-action: manipulation;
+      transition: transform 0.06s ease, background-color 0.12s ease;
+    }
+    .keypad-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* Blinking cursor for custom math input */
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+    .math-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1.25em;
+      background-color: #2563EB;
+      vertical-align: middle;
+      margin-left: 2px;
+      animation: blink 1s infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased selection:bg-blue-100 selection:text-blue-900">
+
+  <!-- =====================================================================
+       TOP NAVIGATION & PROGRESS HEADER
+  ====================================================================== -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
+    <div class="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+      <!-- Brand / Topic Title -->
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-mono font-bold text-sm shrink-0">
+          a/b
+        </div>
+        <div class="truncate">
+          <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 leading-none" id="header-subject">Algebra & Number</p>
+          <h1 class="text-sm sm:text-base font-bold text-slate-900 truncate" id="header-title">Adding Fractions</h1>
+        </div>
+      </div>
+
+      <!-- Sound Toggle & Design Rationale Trigger -->
+      <div class="flex items-center gap-2 shrink-0">
+        <button
+          id="sound-toggle-btn"
+          type="button"
+          aria-pressed="false"
+          class="min-h-[40px] px-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition"
+          title="Toggle tutor voice readout"
+        >
+          <!-- Muted Icon by default -->
+          <svg id="sound-icon-off" class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+          </svg>
+          <!-- Active Sound Icon -->
+          <svg id="sound-icon-on" class="w-4 h-4 text-blue-600 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+          </svg>
+          <span id="sound-label">Voice Off</span>
+        </button>
+
+        <button
+          id="open-rationale-btn"
+          type="button"
+          class="min-h-[40px] px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-semibold flex items-center gap-1.5 transition"
+          title="View Pedagogical Design Rationale & Lesson JSON"
+        >
+          <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+          </svg>
+          <span class="hidden sm:inline">Design & JSON</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 4-Stage Segmented Stepper -->
+    <nav aria-label="Lesson stages" class="max-w-5xl mx-auto px-4 pb-2.5">
+      <ol id="stage-stepper" class="grid grid-cols-4 gap-1.5 sm:gap-2">
+        <!-- Populated dynamically from LESSON_CONTENT -->
+      </ol>
+    </nav>
+  </header>
+
+  <!-- =====================================================================
+       MAIN RESPONSIVE WORKSPACE (Phone-First Single Column -> Desktop 2-Col)
+  ====================================================================== -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 pt-4 pb-8 flex flex-col lg:grid lg:grid-cols-12 lg:gap-6 items-start">
+
+    <!-- TUTOR PANEL: Top sticky card on Mobile, Dedicated Left Column on Desktop -->
+    <aside class="w-full lg:col-span-4 lg:sticky lg:top-28 mb-4 lg:mb-0">
+      <div id="tutor-card" class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 transition-all">
+        <div class="flex items-start gap-3.5">
+          <!-- Custom Minimalist Geometric Tutor Avatar ("Axiom") -->
+          <div id="tutor-avatar" class="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center shrink-0 relative overflow-hidden">
+            <svg class="w-9 h-9" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <!-- Outer Geometric Orbit -->
+              <circle class="tutor-ring" cx="20" cy="20" r="15" stroke="#3B82F6" stroke-width="1.75" stroke-dasharray="4 3" />
+              <!-- Inner Core Hexagon/Circle -->
+              <circle cx="20" cy="20" r="10" fill="#1E293B" stroke="#60A5FA" stroke-width="1.5" />
+              <!-- Voice / Focus Bars -->
+              <rect class="wave-bar wave-bar-1" x="15" y="16" width="2.2" height="8" rx="1.1" fill="#F8FAFC" />
+              <rect class="wave-bar wave-bar-2" x="18.9" y="14" width="2.2" height="12" rx="1.1" fill="#60A5FA" />
+              <rect class="wave-bar wave-bar-3" x="22.8" y="16" width="2.2" height="8" rx="1.1" fill="#F8FAFC" />
+            </svg>
+          </div>
+
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="text-xs font-bold tracking-wide uppercase text-blue-600" id="tutor-name">Axiom · Tutor</span>
+              <span id="tutor-status-badge" class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                Ready
+              </span>
+            </div>
+            <!-- Tutor Spoken / Written Message -->
+            <div id="tutor-message" class="text-sm sm:text-[15px] leading-relaxed text-slate-800 font-medium">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Replay Speech Button (visible when voice is enabled) -->
+        <div id="tutor-voice-controls" class="hidden mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+          <span class="text-[11px] text-slate-400">Web Speech API active</span>
+          <button
+            id="replay-speech-btn"
+            type="button"
+            class="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-blue-50 transition"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Read again
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- INTERACTIVE LESSON CANVAS: Right Column on Desktop, Main Flow on Mobile -->
+    <section class="w-full lg:col-span-8 flex flex-col gap-4">
+      <!-- Dynamic Stage Container -->
+      <div id="stage-container" class="w-full">
+        <!-- Rendered dynamically per stage -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =====================================================================
+       DOCKED CUSTOM MATH KEYPAD (Appears in Stages 3 & 4 when typing)
+  ====================================================================== -->
+  <div
+    id="math-keypad-dock"
+    class="hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] transition-transform duration-200"
+  >
+    <div class="max-w-2xl mx-auto px-3 pt-2.5 pb-3 sm:pb-4">
+      <!-- Live Fraction Preview & Raw Input Strip -->
+      <div class="flex items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 mb-2.5">
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0">Your line:</span>
+          <div id="keypad-raw-display" class="font-mono text-base sm:text-lg font-bold text-slate-900 tracking-wide truncate">
+            <span class="math-cursor"></span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0 border-l border-slate-200 pl-3">
+          <span class="text-[11px] font-medium text-slate-400 hidden sm:inline">Preview:</span>
+          <div id="keypad-formatted-preview" class="text-base sm:text-lg font-bold text-blue-700 min-w-[48px] text-center">
+            —
+          </div>
+        </div>
+      </div>
+
+      <!-- Tactile Key Grid (44px+ minimum height per key) -->
+      <div class="grid grid-cols-6 gap-1.5 sm:gap-2">
+        <!-- Row 1: 1 2 3 4 5 Backspace -->
+        <button type="button" data-key="1" class="keypad-btn h-12 rounded-xl bg-white border border-slate-200 shadow-xs font-mono text-lg font-bold text-slate-800 hover:bg-slate-50">1</button>
+        <button type="button" data-key="2" class="keypad-btn h-12 rounded-xl bg-white border border-slate-200 shadow-xs font-mono text-lg font-bold text-slate-800 hover:bg-slate-50">2</button>
+        <button type="button" data-key="3" class="keypad-btn h-12 rounded-xl bg-white border border-slate-200 shadow-xs font-mono text-lg font-bold text-slate-800 hover:bg-slate-50">3</button>
+        <button type="button" data-key="4" class="keypad-btn h-12 rounded-xl bg-white border border-slate-200 shadow-xs font-mono text-lg font-bold text-slate-800 hover:bg-slate-50">4</button>
+        <button type="button" data-key="5" class="keypad-btn h-12 rounded-xl bg-white border border-slate-200 shadow-xs font-mono text-lg font-bold text-slate-800 hover:bg-slate-50">5</button>
+        <button type="button" data-action="backspace" aria-label="Backspace" class="keypad-btn h-12 rounded-xl bg-slate-100 border border-slate-200 font-sans text-sm font-bold text-slate-700 hover:bg-slate-200 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" />
+          </svg>
+        </button>
+
+        <!-- Row 2: 6 7 8 9 0 Clear -->
+        <button type="button" data-key="6" class="keypad-btn h-12 rounded-xl bg-white border border-slate-200 shadow-xs font-mono text-lg font-bold text-slate-800 hover:bg-slate-50">6</button>
+        <button type="button" data-key="7" class="keypad-btn h-12 rounded-xl bg-white border border-slate-200 shadow-xs font-mono text-lg font-bold text-slate-800 hover:bg-slate-50">7</button>
+        <button type="button" data-key="8" class="keypad-btn h-12 rounded-xl bg-white border border-slate-200 shadow-xs font-mono text-lg font-bold text-slate-800 hover:bg-slate-50">8</button>
+        <button type="button" data-key="9" class="keypad-btn h-12 rounded-xl bg-white border border-slate-200 shadow-xs font-mono text-lg font-bold text-slate-800 hover:bg-slate-50">9</button>
+        <button type="button" data-key="0" class="keypad-btn h-12 rounded-xl bg-white border border-slate-200 shadow-xs font-mono text-lg font-bold text-slate-800 hover:bg-slate-50">0</button>
+        <button type="button" data-action="clear" class="keypad-btn h-12 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-600 hover:bg-slate-200">
+          Clear
+        </button>
+
+        <!-- Row 3: Dedicated Fraction Bar [/], [+], [=], and Primary [Check Line] -->
+        <button type="button" data-key="/" class="keypad-btn col-span-2 h-12 rounded-xl bg-blue-50 border-2 border-blue-200 font-mono text-lg font-bold text-blue-700 hover:bg-blue-100 flex items-center justify-center gap-1.5">
+          <span>/</span>
+          <span class="text-xs font-sans font-semibold text-blue-600">Fraction</span>
+        </button>
+        <button type="button" data-key=" + " class="keypad-btn h-12 rounded-xl bg-slate-100 border border-slate-200 font-mono text-xl font-bold text-slate-800 hover:bg-slate-200">+</button>
+        <button type="button" data-key=" = " class="keypad-btn h-12 rounded-xl bg-slate-100 border border-slate-200 font-mono text-xl font-bold text-slate-800 hover:bg-slate-200">=</button>
+        <button type="button" data-action="submit" id="keypad-submit-btn" class="keypad-btn col-span-2 h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-sans text-sm sm:text-base font-bold shadow-sm flex items-center justify-center gap-1.5">
+          <span>Check</span>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spacer so content is never hidden behind docked keypad -->
+  <div id="keypad-spacer" class="hidden h-56"></div>
+
+  <!-- =====================================================================
+       DESIGN RATIONALE & JSON INSPECTOR MODAL (For Evaluators & Students)
+  ====================================================================== -->
+  <div id="rationale-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl border border-slate-200 max-w-3xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-slate-900">Pedagogical Design & Architecture</h2>
+          <p class="text-xs text-slate-500">How this tutorial teaches & its separated JSON data layer</p>
+        </div>
+        <button id="close-rationale-btn" type="button" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Modal Tabs -->
+      <div class="px-5 pt-3 border-b border-slate-200 flex gap-4 bg-slate-50">
+        <button id="tab-design-notes" type="button" class="pb-2.5 text-xs sm:text-sm font-bold border-b-2 border-blue-600 text-blue-600">Design Decisions</button>
+        <button id="tab-json-viewer" type="button" class="pb-2.5 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800">LESSON_CONTENT (JSON)</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto text-sm text-slate-700 space-y-4 leading-relaxed">
+        <!-- Tab 1: Design Decisions -->
+        <div id="panel-design-notes" class="space-y-4">
+          <div class="p-3.5 rounded-xl bg-blue-50/70 border border-blue-100">
+            <h3 class="font-bold text-slate-900 mb-1">1. Phone-First Working Paper & Custom Keypad</h3>
+            <p class="text-xs sm:text-sm text-slate-700">Typing fractions like <code class="font-mono bg-white px-1 rounded">2/3 + 1/4</code> on a standard mobile keyboard requires toggling between letters, numbers, and symbols repeatedly. Our docked keypad puts digits, a dedicated fraction slash <code class="font-mono bg-white px-1 rounded">/</code>, <code class="font-mono bg-white px-1 rounded">+</code>, and <code class="font-mono bg-white px-1 rounded">=</code> within thumb reach while rendering stacked fractions in real time.</p>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <h3 class="font-bold text-slate-900 mb-1">2. Respectful Tone & Minimalist Tutor ("Axiom")</h3>
+            <p class="text-xs sm:text-sm text-slate-700">Teenagers aged 13–16 reject childish mascots and patronizing praise. Axiom uses a calm, peer-level editorial voice, lives in a compact top card on mobile (and a sticky sidebar on desktop), and keeps audio muted by default with full text parity via the Web Speech API.</p>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <h3 class="font-bold text-slate-900 mb-1">3. Diagnostic Checking, Not Just Right/Wrong</h3>
+            <p class="text-xs sm:text-sm text-slate-700">Instead of simple string matching, the validation engine parses mathematical expressions into rational values and inspects numerator/denominator patterns. If a learner adds straight across (<code class="font-mono bg-white px-1 rounded">3/5 + 1/6 = 4/11</code>), Axiom diagnoses why that happens. If they enter an unsimplified equivalent (<code class="font-mono bg-white px-1 rounded">8/12</code> instead of <code class="font-mono bg-white px-1 rounded">2/3</code>), Axiom confirms the value is right and nudges them to simplify.</p>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <h3 class="font-bold text-slate-900 mb-1">4. Complete Content–Engine Separation</h3>
+            <p class="text-xs sm:text-sm text-slate-700">Every explanation, worked line, diagnostic rule, and progressive hint resides in <code class="font-mono bg-white px-1 rounded">LESSON_CONTENT</code>. Swapping that single JSON object turns this engine into a tutorial for one-step equations or polynomials without changing UI code.</p>
+          </div>
+        </div>
+
+        <!-- Tab 2: Live JSON Viewer -->
+        <div id="panel-json-viewer" class="hidden">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold text-slate-500">Single source of truth driving this entire tutorial:</span>
+            <button id="copy-json-btn" type="button" class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700">Copy JSON</button>
+          </div>
+          <pre id="json-code-block" class="bg-slate-900 text-slate-100 p-4 rounded-xl text-xs font-mono overflow-x-auto leading-relaxed"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       JAVASCRIPT: SEPARATED LESSON CONTENT + DATA-DRIVEN TUTORIAL ENGINE
+  ====================================================================== -->
+  <script>
+    /**
+     * =========================================================================
+     * 1. LESSON_CONTENT (Pure Declarative Data Layer)
+     * Everything the tutor says, shows, checks, and hints lives right here.
+     * Replacing this JSON object adapts the app to a new lesson without changing
+     * any rendering or validation code below.
+     * =========================================================================
+     */
+    const LESSON_CONTENT = {
+      meta: {
+        subject: "Number & Algebra",
+        title: "Adding Fractions with Different Denominators",
+        tutorName: "Axiom",
+        targetAudience: "Ages 13–16"
+      },
+      stages: [
+        { id: "explain", shortLabel: "1. Explain", title: "Why Denominators Must Match" },
+        { id: "worked", shortLabel: "2. Watch", title: "Worked Example" },
+        { id: "guided", shortLabel: "3. Together", title: "Try One Together" },
+        { id: "solo", shortLabel: "4. Solo", title: "On Your Own" }
+      ],
+
+      /* -----------------------------------------------------------------------
+         STAGE 1: EXPLAIN
+      ----------------------------------------------------------------------- */
+      explain: {
+        initialTutorMessage: "You cannot add slices of different sizes directly. Tap through these two quick cards to see why, and how we fix it.",
+        cards: [
+          {
+            id: "concept-visual",
+            badge: "Core Idea",
+            heading: "Different denominators mean different-sized pieces",
+            tutorSpeech: "Look at 2/3 plus 1/4. Thirds and quarters are different sizes, so adding 2 + 1 gives neither thirds nor quarters. We need a common grid first.",
+            body: "When you add <strong>2/3 + 1/4</strong>, the bottom numbers (denominators) tell you the size of each piece. You can only count pieces together once they are cut into the exact same size.",
+            interactiveVisual: {
+              type: "fraction-bar-comparison",
+              leftFraction: { num: 2, den: 3, label: "2/3" },
+              rightFraction: { num: 1, den: 4, label: "1/4" },
+              commonDenominator: 12,
+              toggleLabelOff: "Split both bars into 12ths (Common Denominator)",
+              toggleLabelOn: "Showing 8/12 + 3/12 = 11/12"
+            }
+          },
+          {
+            id: "three-step-method",
+            badge: "The Method",
+            heading: "Three clean moves every time",
+            tutorSpeech: "Here is the entire method in three lines: match the denominators, add the numerators, and simplify if you can.",
+            body: "Whether the numbers are small or algebraic, every problem follows the same three-line structure on your page:",
+            steps: [
+              {
+                num: "01",
+                title: "Find a common denominator",
+                detail: "Find a number both denominators divide into evenly (the Lowest Common Multiple). Multiply top and bottom of each fraction by the same factor so its value stays unchanged."
+              },
+              {
+                num: "02",
+                title: "Add the numerators",
+                detail: "Once the denominators match, add the top numbers and keep the common denominator underneath."
+              },
+              {
+                num: "03",
+                title: "Simplify if possible",
+                detail: "Check if the top and bottom share a common factor. Divide both by it to leave your answer in simplest form."
+              }
+            ]
+          }
+        ]
+      },
+
+      /* -----------------------------------------------------------------------
+         STAGE 2: WATCH A WORKED EXAMPLE (2/3 + 1/4)
+      ----------------------------------------------------------------------- */
+      workedExample: {
+        problem: "2/3 + 1/4",
+        introTutor: "Watch how 2/3 + 1/4 unfolds line by line. Tap 'Next line' when you are ready for each move.",
+        lines: [
+          {
+            stepNumber: 0,
+            label: "Start",
+            formattedHtml: `<span class="frac"><span class="frac-num">2</span><span class="frac-den callout-target">3</span></span> + <span class="frac"><span class="frac-num">1</span><span class="frac-den callout-target">4</span></span>`,
+            tutorSpeech: "Start by looking at the denominators: 3 and 4. The smallest number both 3 and 4 go into is 12.",
+            calloutNote: "Denominators 3 and 4 → Lowest Common Denominator is 12."
+          },
+          {
+            stepNumber: 1,
+            label: "Line 1 · Match denominators",
+            formattedHtml: `<span class="frac"><span class="frac-num">2<span class="callout-multiplier">×4</span></span><span class="frac-den">3<span class="callout-multiplier">×4</span></span></span> + <span class="frac"><span class="frac-num">1<span class="callout-multiplier">×3</span></span><span class="frac-den">4<span class="callout-multiplier">×3</span></span></span>`,
+            tutorSpeech: "To turn 3 into 12, multiply top and bottom by 4. To turn 4 into 12, multiply top and bottom by 3.",
+            calloutNote: "Multiplying top and bottom by the same number keeps each fraction equal."
+          },
+          {
+            stepNumber: 2,
+            label: "Line 2 · Rewrite over 12",
+            formattedHtml: `<span class="frac"><span class="frac-num callout-target">8</span><span class="frac-den">12</span></span> + <span class="frac"><span class="frac-num callout-target">3</span><span class="frac-den">12</span></span>`,
+            tutorSpeech: "Now we have 8/12 + 3/12. Same-sized pieces, so we are ready to add the tops.",
+            calloutNote: "Both fractions are now written in twelfths."
+          },
+          {
+            stepNumber: 3,
+            label: "Line 3 · Add numerators & check",
+            formattedHtml: `<span class="frac"><span class="frac-num">11</span><span class="frac-den">12</span></span>`,
+            tutorSpeech: "8 + 3 gives 11, over 12. 11 and 12 share no common factors, so 11/12 is already in simplest form.",
+            calloutNote: "Done. 11/12 cannot be simplified further."
+          }
+        ]
+      },
+
+      /* -----------------------------------------------------------------------
+         STAGE 3: TRY ONE TOGETHER (3/5 + 1/6)
+      ----------------------------------------------------------------------- */
+      guidedPractice: {
+        problem: "3/5 + 1/6",
+        introTutor: "Your turn with support. Work out 3/5 + 1/6 one line at a time. Start by rewriting both fractions with a common denominator.",
+        steps: [
+          {
+            id: "guided-step-1",
+            promptLabel: "Line 1: Rewrite both fractions with a common denominator",
+            placeholderHint: "e.g. a/b + c/d",
+            expectedType: "sum-of-two-fractions",
+            targetDenominator: 30,
+            expectedValues: [3/5, 1/6],
+            acceptedExamples: ["18/30 + 5/30", "5/30 + 18/30"],
+            successMessage: "Yes, that's right. 3/5 becomes 18/30 and 1/6 becomes 5/30.",
+            diagnostics: [
+              {
+                code: "STRAIGHT_ACROSS",
+                pattern: /^4\/11$/,
+                message: "Careful — 4/11 comes from adding 3+1 and 5+6 straight across. First convert both fractions to a common denominator (30)."
+              },
+              {
+                code: "FORGOT_NUMERATOR",
+                pattern: /^3\/30\s*\+\s*1\/30$/,
+                message: "You found the right denominator (30), but remember to multiply the numerators too: 3×6 = 18 and 1×5 = 5."
+              },
+              {
+                code: "UNMATCHED_DENOMINATORS",
+                checkType: "different_denominators",
+                message: "Those two fractions still have different denominators. Find a number both 5 and 6 divide into."
+              }
+            ],
+            hints: [
+              "Look at the denominators 5 and 6. What is the smallest number in both the 5 times table and 6 times table?",
+              "The common denominator is 30. Multiply top and bottom of 3/5 by 6, and top and bottom of 1/6 by 5.",
+              "3/5 = 18/30 and 1/6 = 5/30. Enter 18/30 + 5/30."
+            ]
+          },
+          {
+            id: "guided-step-2",
+            promptLabel: "Line 2: Add the numerators to get the final fraction",
+            placeholderHint: "e.g. a/b",
+            expectedType: "single-fraction",
+            exactNumerator: 23,
+            exactDenominator: 30,
+            acceptedExamples: ["23/30"],
+            successMessage: "Spot on. 18 + 5 = 23, so 23/30 is the final answer (and 23 is prime, so it cannot simplify).",
+            diagnostics: [
+              {
+                code: "ADDED_DENOMINATORS",
+                pattern: /^23\/60$/,
+                message: "Almost — you added the tops to get 23, which is right, but keep the denominator at 30 instead of adding 30 + 30."
+              },
+              {
+                code: "STRAIGHT_ACROSS",
+                pattern: /^4\/11$/,
+                message: "Add the converted numerators from Line 1: 18 + 5 over 30."
+              }
+            ],
+            hints: [
+              "Keep the denominator as 30 and add the two top numbers from Line 1.",
+              "Calculate 18 + 5 for the numerator, keeping 30 underneath.",
+              "18 + 5 = 23, so enter 23/30."
+            ]
+          }
+        ]
+      },
+
+      /* -----------------------------------------------------------------------
+         STAGE 4: ON YOUR OWN (5/12 + 1/4 -> 5/12 + 3/12 -> 8/12 -> 2/3)
+      ----------------------------------------------------------------------- */
+      soloPractice: {
+        problem: "5/12 + 1/4",
+        introTutor: "Now try 5/12 + 1/4 independently. Notice that 4 divides cleanly into 12, and watch out for simplifying at the end.",
+        steps: [
+          {
+            id: "solo-step-1",
+            promptLabel: "Line 1: Rewrite with matching denominators",
+            placeholderHint: "e.g. a/b + c/d",
+            expectedType: "sum-of-two-fractions",
+            targetDenominator: 12,
+            expectedValues: [5/12, 1/4],
+            acceptedExamples: ["5/12 + 3/12", "3/12 + 5/12"],
+            successMessage: "Clean. Since 12 is already a multiple of 4, 5/12 stays as it is and 1/4 becomes 3/12.",
+            diagnostics: [
+              {
+                code: "STRAIGHT_ACROSS",
+                pattern: /^6\/16$/,
+                message: "6/16 adds tops and bottoms straight across. Match the denominators first — notice 4 goes into 12."
+              },
+              {
+                code: "FORGOT_NUMERATOR",
+                pattern: /^5\/12\s*\+\s*1\/12$/,
+                message: "You changed 4 to 12 by multiplying by 3 — multiply the top of 1/4 by 3 as well."
+              },
+              {
+                code: "EQUIVALENT_HIGHER_DENOM",
+                checkType: "equivalent_sum_any_common_denom",
+                message: "That works mathematically! Even cleaner: since 4 divides into 12, you can use 12 as your denominator: 5/12 + 3/12."
+              }
+            ],
+            hints: [
+              "Check if the smaller denominator (4) divides evenly into the larger denominator (12).",
+              "4 × 3 = 12, so 5/12 stays unchanged and you only need to multiply top and bottom of 1/4 by 3.",
+              "1/4 becomes 3/12, so enter 5/12 + 3/12."
+            ]
+          },
+          {
+            id: "solo-step-2",
+            promptLabel: "Line 2: Add the fractions",
+            placeholderHint: "e.g. a/b",
+            expectedType: "single-fraction",
+            exactNumerator: 8,
+            exactDenominator: 12,
+            allowUnsimplifiedHere: true,
+            acceptedExamples: ["8/12"],
+            successMessage: "Good — 5/12 + 3/12 = 8/12. Now look closely at 8 and 12: can this fraction be simplified?",
+            diagnostics: [
+              {
+                code: "ALREADY_SIMPLIFIED_EARLY",
+                pattern: /^2\/3$/,
+                jumpToComplete: true,
+                message: "Nice — you added to 8/12 and simplified straight to 2/3 in one step!"
+              },
+              {
+                code: "ADDED_DENOMINATORS",
+                pattern: /^8\/24$/,
+                message: "Add the numerators (5 + 3 = 8), but keep the common denominator 12."
+              }
+            ],
+            hints: [
+              "Add the numerators 5 and 3 while keeping 12 as the denominator.",
+              "5 + 3 = 8 over 12.",
+              "Enter 8/12."
+            ]
+          },
+          {
+            id: "solo-step-3",
+            promptLabel: "Line 3: Write the answer in simplest form",
+            placeholderHint: "e.g. a/b",
+            expectedType: "single-fraction",
+            exactNumerator: 2,
+            exactDenominator: 3,
+            acceptedExamples: ["2/3"],
+            successMessage: "Nailed it. Dividing top and bottom of 8/12 by 4 gives 2/3. You have completed the full tutorial.",
+            diagnostics: [
+              {
+                code: "NOT_SIMPLIFIED_8_12",
+                pattern: /^8\/12$/,
+                message: "8/12 has the right value, but it is not simplified yet. Both 8 and 12 divide by 4."
+              },
+              {
+                code: "PARTIALLY_SIMPLIFIED_4_6",
+                pattern: /^4\/6$/,
+                message: "Good start dividing by 2 to get 4/6 — you can divide top and bottom by 2 one more time."
+              }
+            ],
+            hints: [
+              "Find the largest number that divides evenly into both 8 and 12.",
+              "Both 8 and 12 are in the 4 times table. Divide 8 ÷ 4 and 12 ÷ 4.",
+              "8 ÷ 4 = 2 and 12 ÷ 4 = 3. Enter 2/3."
+            ]
+          }
+        ]
+      }
+    };
+
+    /**
+     * =========================================================================
+     * 2. APPLICATION STATE
+     * =========================================================================
+     */
+    const state = {
+      currentStageIndex: 0,
+      maxStageReached: 0,
+      voiceEnabled: false,
+      currentTutorText: "",
+
+      // Stage 1 state
+      explainCardIndex: 0,
+      explainSplitActive: false,
+
+      // Stage 2 state
+      workedLineIndex: 0,
+
+      // Stage 3 state (Guided Practice)
+      guided: {
+        currentStepIndex: 0,
+        completedLines: [], // { label, rawInput, formattedHtml, feedback }
+        currentInput: "",
+        hintTier: 0,
+        feedback: null, // { type: 'error' | 'warning' | 'success', text }
+        isComplete: false
+      },
+
+      // Stage 4 state (Solo Practice)
+      solo: {
+        currentStepIndex: 0,
+        completedLines: [],
+        currentInput: "",
+        hintTier: 0,
+        feedback: null,
+        isComplete: false
+      }
+    };
+
+    /**
+     * =========================================================================
+     * 3. MATH PARSER, FORMATTER & DIAGNOSTIC VALIDATION ENGINE
+     * Completely independent of specific numbers in LESSON_CONTENT.
+     * =========================================================================
+     */
+    function gcd(a, b) {
+      a = Math.abs(Math.round(a));
+      b = Math.abs(Math.round(b));
+      while (b !== 0) {
+        const t = b;
+        b = a % b;
+        a = t;
+      }
+      return a || 1;
+    }
+
+    function parseSingleFraction(token) {
+      const cleaned = token.trim();
+      const match = cleaned.match(/^(\d+)\s*\/\s*(\d+)$/);
+      if (!match) return null;
+      const num = parseInt(match[1], 10);
+      const den = parseInt(match[2], 10);
+      if (den === 0) return null;
+      return { num, den, value: num / den };
+    }
+
+    function parseSumOfTwoFractions(input) {
+      const parts = input.split("+");
+      if (parts.length !== 2) return null;
+      const left = parseSingleFraction(parts[0]);
+      const right = parseSingleFraction(parts[1]);
+      if (!left || !right) return null;
+      return { left, right };
+    }
+
+    /**
+     * Renders plain text math like "18/30 + 5/30" into clean stacked HTML fractions
+     */
+    function formatMathExpressionToHtml(raw) {
+      if (!raw || !raw.trim()) return "—";
+      // Replace every a/b occurrence with stacked fraction markup
+      return raw
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/(\d+)\s*\/\s*(\d+)/g, (_, num, den) => {
+          return `<span class="frac"><span class="frac-num">${num}</span><span class="frac-den">${den}</span></span>`;
+        });
+    }
+
+    /**
+     * Evaluates a learner's line against the declarative step specification
+     */
+    function evaluateLearnerLine(rawInput, stepSpec) {
+      const normalized = rawInput.replace(/\s+/g, " ").trim();
+      const compact = rawInput.replace(/\s+/g, "");
+
+      if (!compact) {
+        return { status: "error", message: "Type your mathematical line using the keypad below before checking." };
+      }
+
+      // 1. Check explicit regex diagnostics first (e.g. adding straight across 4/11)
+      if (stepSpec.diagnostics) {
+        for (const diag of stepSpec.diagnostics) {
+          if (diag.pattern && diag.pattern.test(compact)) {
+            if (diag.jumpToComplete) {
+              return { status: "success_jump", message: diag.message };
+            }
+            return { status: "diagnostic", message: diag.message };
+          }
+        }
+      }
+
+      // 2. Validate based on expected step structure
+      if (stepSpec.expectedType === "sum-of-two-fractions") {
+        const parsed = parseSumOfTwoFractions(compact);
+        if (!parsed) {
+          return {
+            status: "error",
+            message: "Write two fractions added together, like a/b + c/d."
+          };
+        }
+
+        const { left, right } = parsed;
+
+        // Check if denominators still don't match
+        if (left.den !== right.den) {
+          const diffDiag = (stepSpec.diagnostics || []).find(d => d.checkType === "different_denominators");
+          return {
+            status: "diagnostic",
+            message: diffDiag ? diffDiag.message : "Both fractions need the exact same denominator before you can add them."
+          };
+        }
+
+        // Check mathematical equivalence to the original two fractions (in either order)
+        const [expA, expB] = stepSpec.expectedValues;
+        const eps = 1e-6;
+        const matchesOrder1 = Math.abs(left.value - expA) < eps && Math.abs(right.value - expB) < eps;
+        const matchesOrder2 = Math.abs(left.value - expB) < eps && Math.abs(right.value - expA) < eps;
+
+        if (!matchesOrder1 && !matchesOrder2) {
+          return {
+            status: "diagnostic",
+            message: `Check your numerators: when you change the denominator to ${left.den}, multiply each top number by the same factor you used on the bottom.`
+          };
+        }
+
+        // Valid equivalent fractions with matching denominators!
+        // Check if they used a larger common denominator than the target (e.g. 20/48 + 12/48 instead of 5/12 + 3/12)
+        if (left.den !== stepSpec.targetDenominator) {
+          const higherDiag = (stepSpec.diagnostics || []).find(d => d.checkType === "equivalent_sum_any_common_denom");
+          if (higherDiag) {
+            return {
+              status: "diagnostic",
+              message: higherDiag.message
+            };
+          }
+        }
+
+        return { status: "success", message: stepSpec.successMessage };
+      }
+
+      if (stepSpec.expectedType === "single-fraction") {
+        const parsed = parseSingleFraction(compact);
+        if (!parsed) {
+          return {
+            status: "error",
+            message: "Enter a single fraction in the form numerator/denominator (for example, 3/4)."
+          };
+        }
+
+        const expectedVal = stepSpec.exactNumerator / stepSpec.exactDenominator;
+        const eps = 1e-6;
+
+        // Exact numerator & denominator match
+        if (parsed.num === stepSpec.exactNumerator && parsed.den === stepSpec.exactDenominator) {
+          return { status: "success", message: stepSpec.successMessage };
+        }
+
+        // Mathematically equivalent fraction (e.g. 8/12 when 2/3 is expected, or 46/60 when 23/30 is expected)
+        if (Math.abs(parsed.value - expectedVal) < eps) {
+          const commonFactor = gcd(parsed.num, parsed.den);
+          if (commonFactor > 1) {
+            return {
+              status: "diagnostic",
+              message: `${parsed.num}/${parsed.den} has the right value, but it isn't in simplest form yet. Divide both ${parsed.num} and ${parsed.den} by ${commonFactor}.`
+            };
+          }
+        }
+
+        return {
+          status: "diagnostic",
+          message: "Not quite. Check your numerator addition and keep the common denominator underneath, or tap 'Need a hint?'."
+        };
+      }
+
+      return { status: "error", message: "Check your formatting and try again." };
+    }
+
+    /**
+     * =========================================================================
+     * 4. SPEECH SYNTHESIS & TUTOR MESSAGING
+     * =========================================================================
+     */
+    function speakText(text) {
+      if (!state.voiceEnabled || !("speechSynthesis" in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        // Strip HTML tags if any
+        const plain = text.replace(/<[^>]*>/g, "");
+        const utterance = new SpeechSynthesisUtterance(plain);
+        utterance.rate = 0.98;
+        utterance.pitch = 1.0;
+
+        const avatarEl = document.getElementById("tutor-avatar");
+        utterance.onstart = () => avatarEl.classList.add("tutor-speaking");
+        utterance.onend = () => avatarEl.classList.remove("tutor-speaking");
+        utterance.onerror = () => avatarEl.classList.remove("tutor-speaking");
+
+        window.speechSynthesis.speak(utterance);
+      } catch (e) {
+        // Fail silently on restricted browsers
+      }
+    }
+
+    function setTutorMessage(text, badgeText = "Guide", badgeTone = "neutral", shouldSpeak = true) {
+      state.currentTutorText = text;
+      const msgEl = document.getElementById("tutor-message");
+      const badgeEl = document.getElementById("tutor-status-badge");
+
+      msgEl.innerHTML = text;
+      badgeEl.textContent = badgeText;
+
+      badgeEl.className = "inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full ";
+      if (badgeTone === "success") {
+        badgeEl.className += "bg-emerald-50 text-emerald-700 border border-emerald-200";
+      } else if (badgeTone === "hint") {
+        badgeEl.className += "bg-amber-50 text-amber-800 border border-amber-200";
+      } else {
+        badgeEl.className += "bg-slate-100 text-slate-600";
+      }
+
+      if (shouldSpeak) {
+        speakText(text);
+      }
+    }
+
+    /**
+     * =========================================================================
+     * 5. UI RENDERERS FOR EACH OF THE 4 STAGES
+     * =========================================================================
+     */
+    function renderStepper() {
+      const stepper = document.getElementById("stage-stepper");
+      stepper.innerHTML = LESSON_CONTENT.stages.map((stage, idx) => {
+        const isCurrent = idx === state.currentStageIndex;
+        const isCompleted = idx < state.currentStageIndex;
+        const isAccessible = idx <= state.maxStageReached;
+
+        let btnClasses = "w-full py-2 px-2 rounded-xl text-left transition flex flex-col justify-between border min-h-[44px] ";
+        if (isCurrent) {
+          btnClasses += "bg-blue-600 border-blue-600 text-white shadow-xs";
+        } else if (isCompleted) {
+          btnClasses += "bg-emerald-50/80 border-emerald-200 text-emerald-900 hover:bg-emerald-100/70";
+        } else if (isAccessible) {
+          btnClasses += "bg-white border-slate-200 text-slate-700 hover:bg-slate-50";
+        } else {
+          btnClasses += "bg-slate-50 border-slate-200/70 text-slate-400 cursor-not-allowed opacity-75";
+        }
+
+        return `
+          <li>
+            <button
+              type="button"
+              onclick="navigateToStage(${idx})"
+              ${!isAccessible ? "disabled" : ""}
+              class="${btnClasses}"
+              aria-current="${isCurrent ? "step" : "false"}"
+            >
+              <div class="flex items-center justify-between w-full">
+                <span class="text-[11px] sm:text-xs font-bold truncate">${stage.shortLabel}</span>
+                ${isCompleted ? `<svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>` : ""}
+              </div>
+            </button>
+          </li>
+        `;
+      }).join("");
+    }
+
+    function updateKeypadVisibility() {
+      const dock = document.getElementById("math-keypad-dock");
+      const spacer = document.getElementById("keypad-spacer");
+      const isInteractiveStage =
+        (state.currentStageIndex === 2 && !state.guided.isComplete) ||
+        (state.currentStageIndex === 3 && !state.solo.isComplete);
+
+      if (isInteractiveStage) {
+        dock.classList.remove("hidden");
+        spacer.classList.remove("hidden");
+        syncKeypadDisplay();
+      } else {
+        dock.classList.add("hidden");
+        spacer.classList.add("hidden");
+      }
+    }
+
+    function syncKeypadDisplay() {
+      const activePractice = state.currentStageIndex === 2 ? state.guided : state.solo;
+      const rawEl = document.getElementById("keypad-raw-display");
+      const previewEl = document.getElementById("keypad-formatted-preview");
+
+      const val = activePractice.currentInput;
+      rawEl.innerHTML = `${val ? val.replace(/</g, "&lt;") : ""}<span class="math-cursor"></span>`;
+      previewEl.innerHTML = val.trim() ? formatMathExpressionToHtml(val) : "—";
+
+      // Also update inline active input box on the working paper if present
+      const activeBox = document.getElementById("active-working-input");
+      if (activeBox) {
+        activeBox.innerHTML = val.trim()
+          ? `${formatMathExpressionToHtml(val)}<span class="math-cursor"></span>`
+          : `<span class="text-slate-400 font-sans text-sm font-normal">Tap keys below to enter line…</span><span class="math-cursor"></span>`;
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       STAGE 1: EXPLAIN RENDERER
+    ------------------------------------------------------------------------- */
+    function renderStage1Explain() {
+      const container = document.getElementById("stage-container");
+      const cards = LESSON_CONTENT.explain.cards;
+      const card = cards[state.explainCardIndex];
+
+      setTutorMessage(card.tutorSpeech, `Card ${state.explainCardIndex + 1} of ${cards.length}`, "neutral");
+
+      let visualHtml = "";
+      if (card.interactiveVisual) {
+        const v = card.interactiveVisual;
+        const split = state.explainSplitActive;
+
+        // Build visual fraction bar segments
+        const renderBar = (num, den, splitDen, colorClass, label) => {
+          const totalCols = split ? splitDen : den;
+          const filledCols = split ? num * (splitDen / den) : num;
+          let cells = "";
+          for (let i = 0; i < totalCols; i++) {
+            const isFilled = i < filledCols;
+            // Emphasize original major boundaries when split
+            const isMajorBoundary = split && (i % (splitDen / den) === 0) && i > 0;
+            cells += `<div class="h-9 flex-1 ${isFilled ? colorClass : "bg-slate-100"} ${isMajorBoundary ? "border-l-2 border-slate-700" : "border-l border-white/80"} first:border-l-0 transition-all duration-300"></div>`;
+          }
+          return `
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between text-xs font-bold">
+                <span class="font-mono text-slate-800">${split ? `${filledCols}/${totalCols}` : label}</span>
+                <span class="text-slate-400 font-normal">${split ? `${totalCols} equal pieces` : `${den} pieces`}</span>
+              </div>
+              <div class="w-full rounded-xl overflow-hidden border border-slate-300 flex shadow-2xs">
+                ${cells}
+              </div>
+            </div>
+          `;
+        };
+
+        visualHtml = `
+          <div class="mt-5 p-4 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-4">
+            ${renderBar(v.leftFraction.num, v.leftFraction.den, v.commonDenominator, "bg-blue-600", v.leftFraction.label)}
+            ${renderBar(v.rightFraction.num, v.rightFraction.den, v.commonDenominator, "bg-emerald-600", v.rightFraction.label)}
+
+            <button
+              type="button"
+              onclick="toggleExplainSplit()"
+              class="w-full min-h-[44px] py-2.5 px-4 rounded-xl font-semibold text-xs sm:text-sm transition flex items-center justify-center gap-2 ${
+                split
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : "bg-white border-2 border-blue-600 text-blue-700 hover:bg-blue-50"
+              }"
+            >
+              <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+              <span>${split ? v.toggleLabelOn : v.toggleLabelOff}</span>
+            </button>
+          </div>
+        `;
+      }
+
+      let stepsListHtml = "";
+      if (card.steps) {
+        stepsListHtml = `
+          <div class="mt-5 space-y-3">
+            ${card.steps.map(s => `
+              <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-start gap-3">
+                <span class="font-mono text-xs font-bold px-2 py-1 rounded-lg bg-blue-600 text-white shrink-0 mt-0.5">${s.num}</span>
+                <div>
+                  <h4 class="text-sm font-bold text-slate-900">${s.title}</h4>
+                  <p class="text-xs sm:text-sm text-slate-600 mt-0.5 leading-relaxed">${s.detail}</p>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      container.innerHTML = `
+        <article class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 animate-line">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700">${card.badge}</span>
+            <span class="text-xs font-medium text-slate-400">Step ${state.explainCardIndex + 1} of ${cards.length}</span>
+          </div>
+
+          <h2 class="text-lg sm:text-xl font-bold text-slate-900 leading-snug">${card.heading}</h2>
+          <p class="text-sm sm:text-base text-slate-600 mt-2 leading-relaxed">${card.body}</p>
+
+          ${visualHtml}
+          ${stepsListHtml}
+
+          <!-- Card Navigation Footer -->
+          <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onclick="prevExplainCard()"
+              ${state.explainCardIndex === 0 ? "disabled" : ""}
+              class="min-h-[44px] px-4 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition"
+            >
+              Back
+            </button>
+
+            <button
+              type="button"
+              onclick="nextExplainCard()"
+              class="min-h-[44px] px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-xs flex items-center gap-2 transition"
+            >
+              <span>${state.explainCardIndex < cards.length - 1 ? "Next idea" : "Watch worked example"}</span>
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </article>
+      `;
+    }
+
+    /* -------------------------------------------------------------------------
+       STAGE 2: WORKED EXAMPLE RENDERER
+    ------------------------------------------------------------------------- */
+    function renderStage2Worked() {
+      const container = document.getElementById("stage-container");
+      const worked = LESSON_CONTENT.workedExample;
+      const visibleLines = worked.lines.slice(0, state.workedLineIndex + 1);
+      const currentLine = worked.lines[state.workedLineIndex];
+      const isLastLine = state.workedLineIndex === worked.lines.length - 1;
+
+      setTutorMessage(currentLine.tutorSpeech, currentLine.label, isLastLine ? "success" : "neutral");
+
+      container.innerHTML = `
+        <article class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-line">
+          <!-- Problem Header -->
+          <div class="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
+            <div>
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Worked Example</span>
+              <h2 class="text-base sm:text-lg font-bold flex items-center gap-2">
+                <span>Calculate</span>
+                <span class="font-mono text-blue-300">${worked.problem}</span>
+              </h2>
+            </div>
+            <span class="text-xs font-mono px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300">
+              Line ${state.workedLineIndex + 1} / ${worked.lines.length}
+            </span>
+          </div>
+
+          <!-- Notebook Working Paper -->
+          <div class="p-5 sm:p-6 notebook-grid space-y-4">
+            ${visibleLines.map((line, idx) => {
+              const isLatest = idx === state.workedLineIndex;
+              return `
+                <div class="animate-line rounded-xl p-3.5 sm:p-4 border transition-all ${
+                  isLatest
+                    ? "bg-white border-blue-300 shadow-sm ring-2 ring-blue-100"
+                    : "bg-white/80 border-slate-200/80 text-slate-700"
+                }">
+                  <div class="flex items-center justify-between gap-2 mb-1.5">
+                    <span class="text-[11px] font-bold uppercase tracking-wider ${isLatest ? "text-blue-600" : "text-slate-400"}">
+                      ${line.label}
+                    </span>
+                    ${idx > 0 ? `<span class="font-mono text-xs text-slate-400">=</span>` : ""}
+                  </div>
+                  <div class="text-xl sm:text-2xl font-bold text-slate-900 py-1">
+                    ${idx > 0 ? `<span class="font-mono text-slate-400 mr-2">=</span>` : ""}
+                    ${line.formattedHtml}
+                  </div>
+                  ${isLatest ? `
+                    <p class="mt-2 pt-2 border-t border-slate-100 text-xs sm:text-sm text-slate-600 flex items-start gap-1.5">
+                      <svg class="w-4 h-4 text-blue-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>${line.calloutNote}</span>
+                    </p>
+                  ` : ""}
+                </div>
+              `;
+            }).join("")}
+          </div>
+
+          <!-- Step-by-Step Controls -->
+          <div class="px-5 py-4 bg-white border-t border-slate-200 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onclick="prevWorkedLine()"
+              class="min-h-[44px] px-4 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
+            >
+              ${state.workedLineIndex === 0 ? "Back to Explain" : "Previous line"}
+            </button>
+
+            <button
+              type="button"
+              onclick="nextWorkedLine()"
+              class="min-h-[44px] px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-xs flex items-center gap-2 transition"
+            >
+              <span>${isLastLine ? "Try one together" : "Next line"}</span>
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </article>
+      `;
+    }
+
+    /* -------------------------------------------------------------------------
+       STAGES 3 & 4: INTERACTIVE LINE-BY-LINE PRACTICE RENDERER
+    ------------------------------------------------------------------------- */
+    function renderInteractivePractice(mode) {
+      const container = document.getElementById("stage-container");
+      const config = mode === "guided" ? LESSON_CONTENT.guidedPractice : LESSON_CONTENT.soloPractice;
+      const pState = mode === "guided" ? state.guided : state.solo;
+      const currentStep = config.steps[pState.currentStepIndex];
+
+      // Determine tutor message on initial entry if no feedback active
+      if (!pState.feedback && !pState.isComplete && pState.hintTier === 0 && pState.completedLines.length === 0) {
+        setTutorMessage(config.introTutor, mode === "guided" ? "Guided Practice" : "Independent", "neutral");
+      }
+
+      const completedHtml = pState.completedLines.map((line, idx) => `
+        <div class="animate-line rounded-xl p-3.5 bg-emerald-50/60 border border-emerald-200 flex items-center justify-between gap-3">
+          <div>
+            <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-700 block mb-0.5">${line.label}</span>
+            <div class="text-lg sm:text-xl font-bold text-slate-900">
+              <span class="font-mono text-emerald-600 mr-1.5">=</span>
+              ${line.formattedHtml}
+            </div>
+          </div>
+          <span class="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-white px-2.5 py-1 rounded-lg border border-emerald-200 shrink-0">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            Verified
+          </span>
+        </div>
+      `).join("");
+
+      let activeOrCompleteHtml = "";
+      if (pState.isComplete) {
+        activeOrCompleteHtml = `
+          <div class="animate-line rounded-2xl p-5 bg-emerald-600 text-white shadow-sm space-y-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="font-bold text-base sm:text-lg">
+                  ${mode === "guided" ? "Guided problem solved" : "Lesson complete"}
+                </h3>
+                <p class="text-xs sm:text-sm text-emerald-100">
+                  ${mode === "guided" ? "Ready to tackle one independently?" : "You can now add fractions with different denominators step by step."}
+                </p>
+              </div>
+            </div>
+
+            <div class="pt-2 flex flex-wrap items-center gap-2.5">
+              ${mode === "guided" ? `
+                <button
+                  type="button"
+                  onclick="advanceToSolo()"
+                  class="min-h-[44px] px-5 rounded-xl bg-white text-emerald-800 hover:bg-emerald-50 font-bold text-sm shadow-xs flex items-center gap-2 transition"
+                >
+                  <span>Start final problem</span>
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              ` : `
+                <button
+                  type="button"
+                  onclick="resetEntireLesson()"
+                  class="min-h-[44px] px-4 rounded-xl bg-white text-emerald-800 hover:bg-emerald-50 font-bold text-sm shadow-xs transition"
+                >
+                  Practice again from start
+                </button>
+              `}
+            </div>
+          </div>
+        `;
+      } else {
+        // Active Input Line + Progressive Hint Controls
+        const maxHints = currentStep.hints ? currentStep.hints.length : 0;
+        activeOrCompleteHtml = `
+          <div class="rounded-xl p-4 bg-white border-2 border-blue-500 shadow-sm space-y-3">
+            <div class="flex items-center justify-between gap-2">
+              <label class="text-xs font-bold uppercase tracking-wider text-blue-700">
+                ${currentStep.promptLabel}
+              </label>
+              <span class="text-[11px] font-mono text-slate-400">Step ${pState.currentStepIndex + 1}/${config.steps.length}</span>
+            </div>
+
+            <!-- Visual Working Box synced with Custom Keypad -->
+            <div
+              id="active-working-input"
+              class="min-h-[54px] px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center text-xl font-bold text-slate-900"
+            >
+              ${pState.currentInput.trim()
+                ? `${formatMathExpressionToHtml(pState.currentInput)}<span class="math-cursor"></span>`
+                : `<span class="text-slate-400 font-sans text-sm font-normal">Tap keys below to enter line…</span><span class="math-cursor"></span>`}
+            </div>
+
+            <!-- Inline Diagnostic / Feedback Banner (Accessible Icon + Text, never color alone) -->
+            ${pState.feedback ? `
+              <div role="alert" class="p-3 rounded-xl text-xs sm:text-sm flex items-start gap-2.5 ${
+                pState.feedback.type === "error"
+                  ? "bg-amber-50 border border-amber-300 text-amber-950"
+                  : "bg-blue-50 border border-blue-200 text-blue-950"
+              }">
+                <svg class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>${pState.feedback.text}</span>
+              </div>
+            ` : ""}
+
+            <!-- Progressive 3-Tier Help Control -->
+            <div class="pt-1 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onclick="requestHint('${mode}')"
+                ${pState.hintTier >= maxHints ? "disabled" : ""}
+                class="min-h-[40px] px-3.5 rounded-xl border border-amber-300 bg-amber-50/80 hover:bg-amber-100/80 text-amber-900 text-xs font-bold flex items-center gap-1.5 disabled:opacity-50 transition"
+              >
+                <svg class="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                <span>${pState.hintTier === 0 ? "Need a hint?" : pState.hintTier < maxHints ? `Next hint (${pState.hintTier}/${maxHints})` : "All hints shown"}</span>
+              </button>
+
+              <span class="text-[11px] text-slate-400">Format: <code class="font-mono text-slate-600">${currentStep.placeholderHint}</code></span>
+            </div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = `
+        <article class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-line">
+          <!-- Problem Header -->
+          <div class="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
+            <div>
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                ${mode === "guided" ? "Stage 3 · Try One Together" : "Stage 4 · On Your Own"}
+              </span>
+              <h2 class="text-base sm:text-lg font-bold flex items-center gap-2">
+                <span>Solve</span>
+                <span class="font-mono text-blue-300">${config.problem}</span>
+              </h2>
+            </div>
+            <button
+              type="button"
+              onclick="resetCurrentPractice('${mode}')"
+              class="text-xs font-semibold text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition"
+            >
+              Reset
+            </button>
+          </div>
+
+          <!-- Working Paper Area -->
+          <div class="p-4 sm:p-6 notebook-grid space-y-3">
+            <!-- Starting Expression Card -->
+            <div class="rounded-xl p-3.5 bg-white border border-slate-200">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Original Expression</span>
+              <div class="text-xl sm:text-2xl font-bold text-slate-900">
+                ${formatMathExpressionToHtml(config.problem)}
+              </div>
+            </div>
+
+            ${completedHtml}
+            ${activeOrCompleteHtml}
+          </div>
+        </article>
+      `;
+
+      updateKeypadVisibility();
+    }
+
+    /**
+     * =========================================================================
+     * 6. INTERACTION HANDLERS & NAVIGATION
+     * =========================================================================
+     */
+    function renderCurrentStage() {
+      renderStepper();
+      if (state.currentStageIndex === 0) {
+        renderStage1Explain();
+      } else if (state.currentStageIndex === 1) {
+        renderStage2Worked();
+      } else if (state.currentStageIndex === 2) {
+        renderInteractivePractice("guided");
+      } else if (state.currentStageIndex === 3) {
+        renderInteractivePractice("solo");
+      }
+      updateKeypadVisibility();
+    }
+
+    function navigateToStage(idx) {
+      if (idx < 0 || idx > state.maxStageReached) return;
+      state.currentStageIndex = idx;
+      renderCurrentStage();
+    }
+
+    // Stage 1 Controls
+    function toggleExplainSplit() {
+      state.explainSplitActive = !state.explainSplitActive;
+      renderStage1Explain();
+    }
+
+    function prevExplainCard() {
+      if (state.explainCardIndex > 0) {
+        state.explainCardIndex--;
+        renderStage1Explain();
+      }
+    }
+
+    function nextExplainCard() {
+      if (state.explainCardIndex < LESSON_CONTENT.explain.cards.length - 1) {
+        state.explainCardIndex++;
+        renderStage1Explain();
+      } else {
+        state.maxStageReached = Math.max(state.maxStageReached, 1);
+        state.currentStageIndex = 1;
+        renderCurrentStage();
+      }
+    }
+
+    // Stage 2 Controls
+    function prevWorkedLine() {
+      if (state.workedLineIndex > 0) {
+        state.workedLineIndex--;
+        renderStage2Worked();
+      } else {
+        state.currentStageIndex = 0;
+        renderCurrentStage();
+      }
+    }
+
+    function nextWorkedLine() {
+      if (state.workedLineIndex < LESSON_CONTENT.workedExample.lines.length - 1) {
+        state.workedLineIndex++;
+        renderStage2Worked();
+      } else {
+        state.maxStageReached = Math.max(state.maxStageReached, 2);
+        state.currentStageIndex = 2;
+        renderCurrentStage();
+      }
+    }
+
+    // Stages 3 & 4 Controls
+    function requestHint(mode) {
+      const config = mode === "guided" ? LESSON_CONTENT.guidedPractice : LESSON_CONTENT.soloPractice;
+      const pState = mode === "guided" ? state.guided : state.solo;
+      const currentStep = config.steps[pState.currentStepIndex];
+
+      if (pState.hintTier < currentStep.hints.length) {
+        const hintText = currentStep.hints[pState.hintTier];
+        pState.hintTier++;
+        setTutorMessage(hintText, `Hint ${pState.hintTier} of ${currentStep.hints.length}`, "hint");
+        renderInteractivePractice(mode);
+      }
+    }
+
+    function submitPracticeLine() {
+      const mode = state.currentStageIndex === 2 ? "guided" : "solo";
+      const config = mode === "guided" ? LESSON_CONTENT.guidedPractice : LESSON_CONTENT.soloPractice;
+      const pState = mode === "guided" ? state.guided : state.solo;
+      if (pState.isComplete) return;
+
+      const currentStep = config.steps[pState.currentStepIndex];
+      const result = evaluateLearnerLine(pState.currentInput, currentStep);
+
+      if (result.status === "success" || result.status === "success_jump") {
+        pState.completedLines.push({
+          label: currentStep.promptLabel,
+          rawInput: pState.currentInput.trim(),
+          formattedHtml: formatMathExpressionToHtml(pState.currentInput.trim())
+        });
+        pState.currentInput = "";
+        pState.hintTier = 0;
+        pState.feedback = null;
+
+        setTutorMessage(result.message, "Correct", "success");
+
+        if (result.status === "success_jump" || pState.currentStepIndex >= config.steps.length - 1) {
+          pState.isComplete = true;
+          if (mode === "guided") {
+            state.maxStageReached = Math.max(state.maxStageReached, 3);
+          }
+        } else {
+          pState.currentStepIndex++;
+        }
+      } else {
+        pState.feedback = {
+          type: "error",
+          text: result.message
+        };
+        setTutorMessage(result.message, "Check this step", "hint");
+      }
+
+      renderInteractivePractice(mode);
+    }
+
+    function advanceToSolo() {
+      state.maxStageReached = Math.max(state.maxStageReached, 3);
+      state.currentStageIndex = 3;
+      renderCurrentStage();
+    }
+
+    function resetCurrentPractice(mode) {
+      const target = mode === "guided" ? state.guided : state.solo;
+      target.currentStepIndex = 0;
+      target.completedLines = [];
+      target.currentInput = "";
+      target.hintTier = 0;
+      target.feedback = null;
+      target.isComplete = false;
+      renderInteractivePractice(mode);
+    }
+
+    function resetEntireLesson() {
+      state.currentStageIndex = 0;
+      state.explainCardIndex = 0;
+      state.explainSplitActive = false;
+      state.workedLineIndex = 0;
+      resetCurrentPractice("guided");
+      resetCurrentPractice("solo");
+      renderCurrentStage();
+    }
+
+    /**
+     * =========================================================================
+     * 7. KEYPAD, VOICE, KEYBOARD & MODAL EVENT WIRING
+     * =========================================================================
+     */
+    function handleKeypadInput(key) {
+      if (state.currentStageIndex !== 2 && state.currentStageIndex !== 3) return;
+      const pState = state.currentStageIndex === 2 ? state.guided : state.solo;
+      if (pState.isComplete) return;
+
+      if (pState.currentInput.length < 24) {
+        pState.currentInput += key;
+        pState.feedback = null;
+        syncKeypadDisplay();
+      }
+    }
+
+    function handleKeypadAction(action) {
+      if (state.currentStageIndex !== 2 && state.currentStageIndex !== 3) return;
+      const pState = state.currentStageIndex === 2 ? state.guided : state.solo;
+      if (pState.isComplete) return;
+
+      if (action === "backspace") {
+        // Remove trailing " + " or " = " cleanly as a single token if present
+        if (pState.currentInput.endsWith(" + ") || pState.currentInput.endsWith(" = ")) {
+          pState.currentInput = pState.currentInput.slice(0, -3);
+        } else {
+          pState.currentInput = pState.currentInput.slice(0, -1);
+        }
+        syncKeypadDisplay();
+      } else if (action === "clear") {
+        pState.currentInput = "";
+        pState.feedback = null;
+        syncKeypadDisplay();
+      } else if (action === "submit") {
+        submitPracticeLine();
+      }
+    }
+
+    window.onload = function () {
+      // Hydrate Header & Tutor Name from LESSON_CONTENT
+      document.getElementById("header-subject").textContent = LESSON_CONTENT.meta.subject;
+      document.getElementById("header-title").textContent = LESSON_CONTENT.meta.title;
+      document.getElementById("tutor-name").textContent = `${LESSON_CONTENT.meta.tutorName} · Tutor`;
+      document.getElementById("json-code-block").textContent = JSON.stringify(LESSON_CONTENT, null, 2);
+
+      // Keypad Button Listeners
+      document.querySelectorAll(".keypad-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const key = btn.getAttribute("data-key");
+          const action = btn.getAttribute("data-action");
+          if (key) handleKeypadInput(key);
+          if (action) handleKeypadAction(action);
+        });
+      });
+
+      // Desktop Physical Keyboard Support (0-9, /, +, =, Backspace, Enter)
+      document.addEventListener("keydown", (e) => {
+        if (!document.getElementById("rationale-modal").classList.contains("hidden")) return;
+        if (state.currentStageIndex !== 2 && state.currentStageIndex !== 3) return;
+        const pState = state.currentStageIndex === 2 ? state.guided : state.solo;
+        if (pState.isComplete) return;
+
+        if (/^[0-9\/]$/.test(e.key)) {
+          e.preventDefault();
+          handleKeypadInput(e.key);
+        } else if (e.key === "+") {
+          e.preventDefault();
+          handleKeypadInput(" + ");
+        } else if (e.key === "=") {
+          e.preventDefault();
+          handleKeypadInput(" = ");
+        } else if (e.key === "Backspace") {
+          e.preventDefault();
+          handleKeypadAction("backspace");
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          handleKeypadAction("submit");
+        }
+      });
+
+      // Sound Toggle (User-initiated Web Speech API)
+      const soundBtn = document.getElementById("sound-toggle-btn");
+      soundBtn.addEventListener("click", () => {
+        state.voiceEnabled = !state.voiceEnabled;
+        soundBtn.setAttribute("aria-pressed", String(state.voiceEnabled));
+        document.getElementById("sound-icon-off").classList.toggle("hidden", state.voiceEnabled);
+        document.getElementById("sound-icon-on").classList.toggle("hidden", !state.voiceEnabled);
+        document.getElementById("sound-label").textContent = state.voiceEnabled ? "Voice On" : "Voice Off";
+        document.getElementById("tutor-voice-controls").classList.toggle("hidden", !state.voiceEnabled);
+
+        if (state.voiceEnabled) {
+          speakText(state.currentTutorText);
+        } else if ("speechSynthesis" in window) {
+          window.speechSynthesis.cancel();
+          document.getElementById("tutor-avatar").classList.remove("tutor-speaking");
+        }
+      });
+
+      document.getElementById("replay-speech-btn").addEventListener("click", () => {
+        speakText(state.currentTutorText);
+      });
+
+      // Design Rationale & JSON Inspector Modal
+      const modal = document.getElementById("rationale-modal");
+      document.getElementById("open-rationale-btn").addEventListener("click", () => modal.classList.remove("hidden"));
+      document.getElementById("close-rationale-btn").addEventListener("click", () => modal.classList.add("hidden"));
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) modal.classList.add("hidden");
+      });
+
+      const tabDesign = document.getElementById("tab-design-notes");
+      const tabJson = document.getElementById("tab-json-viewer");
+      const panelDesign = document.getElementById("panel-design-notes");
+      const panelJson = document.getElementById("panel-json-viewer");
+
+      tabDesign.addEventListener("click", () => {
+        tabDesign.className = "pb-2.5 text-xs sm:text-sm font-bold border-b-2 border-blue-600 text-blue-600";
+        tabJson.className = "pb-2.5 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800";
+        panelDesign.classList.remove("hidden");
+        panelJson.classList.add("hidden");
+      });
+
+      tabJson.addEventListener("click", () => {
+        tabJson.className = "pb-2.5 text-xs sm:text-sm font-bold border-b-2 border-blue-600 text-blue-600";
+        tabDesign.className = "pb-2.5 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800";
+        panelJson.classList.remove("hidden");
+        panelDesign.classList.add("hidden");
+      });
+
+      // Copy JSON using execCommand fallback for iframe compatibility
+      document.getElementById("copy-json-btn").addEventListener("click", () => {
+        const tempArea = document.createElement("textarea");
+        tempArea.value = JSON.stringify(LESSON_CONTENT, null, 2);
+        document.body.appendChild(tempArea);
+        tempArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempArea);
+
+        const copyBtn = document.getElementById("copy-json-btn");
+        copyBtn.textContent = "Copied!";
+        setTimeout(() => { copyBtn.textContent = "Copy JSON"; }, 1800);
+      });
+
+      // Initial render
+      renderCurrentStage();
+    };
+  </script>
+</body>
+</html>
